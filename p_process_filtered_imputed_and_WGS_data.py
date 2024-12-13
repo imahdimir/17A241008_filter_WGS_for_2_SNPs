@@ -1,13 +1,26 @@
-"""
-
-
-    """
-
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from bgen_reader import open_bgen
-import numpy as np
+
+
+class Var :
+    iid = 'IID'
+    id1 = 'ID1'
+    id2 = 'ID2'
+
+    rs22 = 'rs2212127'
+    rs57 = 'rs5756437'
+
+    hw1 = 'hw1'
+    hw2 = 'hw2'
+    lw1 = 'lw1'
+    lw2 = 'lw2'
+
+    hi1 = 'hi1'
+    hi2 = 'hi2'
+    li1 = 'li1'
+    li2 = 'li2'
 
 
 class Directory :
@@ -19,387 +32,236 @@ class Directory :
     med_csf = pf / 'med'
     out_csf = pf / 'out'
 
-
-D = Directory()
+    proccessed_data = med_csf / 'processed_data'
 
 
 class FilePath :
     d = Directory()
-
-    rs28 = 'rs2844970'
-    rs14 = 'rs144588527'
-    rs28 = d.out_csf / rs28 / f'{rs28}.bgen'
-    rs28_vcf = d.out_csf / f'rs2844970.vcf'
-    fixed_rs28_vcf = d.out_csf / f'fixed_rs2844970.vcf'
-
-    rs14 = d.out_csf / rs14 / f'{rs14}.bgen'
-    rs14_vcf = d.out_csf / f'rs144588527.vcf'
-    fixed_rs14_vcf = d.out_csf / f'fixed_rs144588527.vcf'
-
-    imp = d.inp_csf / 'imputed_data/two_snps.bgen'
-    fs = d.inp_csf / 'ukb_rel_with_infType_fs.csv'
-    qualified_ids = d.inp_csf / 'qualified_iids.txt'
-
-    d = Directory()
-
-    rs22 = 'rs2212127'
-    rs57 = 'rs5756437'
+    v = Var()
 
     impupted_data = d.med_csf / 'imputed_two_snps_20241212'
-    wgs_date = d.med_csf / 'wgs'
+    two_imputed_sns_bgn = impupted_data / 'two_snps.bgen'
+
+    processed_imputed_data = d.proccessed_data / 'processed_imputed_data.parquet'
+
+    wgs_data = d.med_csf / 'wgs'
+    wgs_rs22 = wgs_data / (v.rs22 + '_common.bgen')
+    wgs_rs57 = wgs_data / (v.rs57 + '.bgen')
+
+    wgs_rs22_processed = d.proccessed_data / 'df_wgs_rs22.parquet'
+    wgs_rs57_processed = d.proccessed_data / 'df_wgs_rs57.parquet'
+
+    processed_data = d.proccessed_data / 'processed_data_combined.parquet'
+
+    rels = d.inp_csf / 'ukb_rel_with_infType_fs.csv'
 
 
-FP = FilePath()
-
-
-class Var :
-    iid = 'IID'
-    id1 = 'ID1'
-    id2 = 'ID2'
-
-
-V = Var()
-
-
-##
-def prepare_wgs_gt() :
-    """ """
+def process_imputed_data_to_fit_the_model() :
+    pass
 
     ##
-    bgn = open_bgen(FP.rs28)
+    d = Directory()
+    fp = FilePath()
+    v = Var()
+
+    ##
+    bgn = open_bgen(fp.two_imputed_sns_bgn)
 
     ##
     sample = bgn.samples
     len(sample)
 
     ##
-    df_iid = pd.DataFrame({
-            V.iid : sample
-            })
+    _dct = {
+            v.iid : sample
+            }
+
+    df_iid = pd.DataFrame(_dct)
+
+    ##
+    df_iid[v.iid] = df_iid[v.iid].str.split('_').str[1]
 
     ##
     nd_gt = bgn.read()
     nd_gt.shape
 
     ##
-    nd_rs28 = nd_gt[: , 1 , :]
-    nd_rs28
+    # low quality SNP haplotypes
+    nd_lq_snp = nd_gt[: , 0 , :]
+    nd_lq_snp
 
     ##
-    nd_rs28 = np.argmax(nd_rs28 , axis = 1)
+    nd_lq_snp = np.argmax(nd_lq_snp , axis = 1)
 
     ##
-    df_gt = pd.DataFrame(nd_rs28 , columns = [FP.rs28.stem])
-
+    df_gt = pd.DataFrame(nd_lq_snp , columns = [v.rs22])
     df_gt.value_counts()
 
     ##
-    df_rs_28 = pd.concat([df_iid , df_gt] , axis = 1)
+    df_lq = pd.concat([df_iid , df_gt] , axis = 1)
 
     ##
+    nd_hq = nd_gt[: , 1 , :]
+    nd_hq
 
     ##
-    bgn_14 = open_bgen(FP.rs14)
+    nd_hq = np.argmax(nd_hq , axis = 1)
 
     ##
-    sample_14 = bgn_14.samples
+    df_gt = pd.DataFrame(nd_hq , columns = [v.rs57])
+    df_gt.value_counts()
 
     ##
-    df_iid_14 = pd.DataFrame({
-            V.iid : sample_14
-            })
+    df_hq = pd.concat([df_iid , df_gt] , axis = 1)
 
     ##
-    nd_gt_14 = bgn_14.read()
-    nd_gt_14.shape
 
-    ##
-    nd_rs14 = nd_gt_14[: , 0 , :]
-    nd_rs14
-
-    ##
-    nd_rs14 = np.argmax(nd_rs14 , axis = 1)
-
-    ##
-    df_gt_14 = pd.DataFrame(nd_rs14 , columns = [FP.rs14.stem])
-
-    ##
-    df_rs_14 = pd.concat([df_iid_14 , df_gt_14] , axis = 1)
-
-    ##
-
-    ##
-    df_wgs_gt = pd.merge(df_rs_28 , df_rs_14 , on = V.iid)
-
-    ##
-
-
-    ##
-    bgn_imp = open_bgen(FP.imp)
-
-    ##
-    sample_imp = bgn_imp.samples
-    sample_imp
-
-    ##
-    df_iid_imp = pd.DataFrame({
-            V.iid : sample_imp
-            })
-
-    df_iid_imp[V.iid] = df_iid_imp[V.iid].str.split('_').str[1]
-
-    ##
-    nd_imp = bgn_imp.read()
-
-    ##
-    nd_rs28_imp = nd_imp[: , 0]
-
-    ##
-    nd_rs28_imp = np.argmax(nd_rs28_imp , axis = 1)
-
-    ##
-    df_rs28_gt_imp = pd.DataFrame(nd_rs28_imp , columns = [FP.rs28.stem])
-
-    ##
-    df_28_imp = pd.concat([df_iid_imp , df_rs28_gt_imp] , axis = 1)
-
-    ##
-
-    ##
-    nd_rs14_imp = nd_imp[: , 1 , :]
-
-    ##
-    nd_rs14_imp = np.argmax(nd_rs14_imp , axis = 1)
-
-    ##
-    df_rs14_gt_imp = pd.DataFrame(nd_rs14_imp , columns = [FP.rs14.stem])
-
-    ##
-    df_14_imp = pd.concat([df_iid_imp , df_rs14_gt_imp] , axis = 1)
-
-    ##
-
-
-    ##
-    df_imp = pd.merge(df_28_imp , df_14_imp , on = V.iid)
-
-    ##
+    # merge low and high quality SNP genotypes
+    df_imp = pd.merge(df_lq , df_hq , on = v.iid)
 
-
-    ##
-    df_fs = pd.read_csv(FP.fs)
-
     ##
-    df_fs = df_fs[[V.id1 , V.id2]]
+    df_imp.to_parquet(fp.processed_imputed_data , index = False)
 
     ##
-    df_fs = df_fs.astype('string')
 
-    ##
-
-    ##
-    df_q_ids = pd.read_csv(FP.qualified_ids ,
-                           header = None ,
-                           dtype = 'string' ,
-                           sep = '\t')
 
-    ##
+def process_wgs_data_to_fit_the_model() :
+    pass
 
     ##
-    msk = df_fs[V.id1].isin(df_q_ids[0])
-    msk &= df_fs[V.id2].isin(df_q_ids[0])
+    d = Directory()
+    fp = FilePath()
+    v = Var()
 
-    df_fs = df_fs[msk]
-
     ##
+    # WGS data process, low quality SNP
+    bgn = open_bgen(fp.wgs_rs22)
+    sample = bgn.samples
 
     ##
-    df_gt = pd.merge(df_fs , df_wgs_gt , left_on = V.id1 , right_on = V.iid)
+    _dct = {
+            v.iid : sample
+            }
 
-    df_gt = df_gt.drop(columns = V.iid)
+    df_iid = pd.DataFrame(_dct)
 
     ##
-    df_gt = df_gt.rename(columns = {
-            FP.rs28.stem : 'w' + '_1_' + FP.rs28.stem
-            })
-    df_gt = df_gt.rename(columns = {
-            FP.rs14.stem : 'w' + '_1_' + FP.rs14.stem
-            })
+    nd_gt = bgn.read()
+    nd_gt.shape
 
     ##
-    df_gt = pd.merge(df_gt , df_imp , left_on = V.id2 , right_on = V.iid)
-
-    df_gt = df_gt.drop(columns = V.iid)
+    nd_snp = nd_gt[: , 0 , :]
+    nd_snp
 
-    df_gt = df_gt.rename(columns = {
-            FP.rs28.stem : 'w' + '_2_' + FP.rs28.stem
-            })
-    df_gt = df_gt.rename(columns = {
-            FP.rs14.stem : 'w' + '_2_' + FP.rs14.stem
-            })
-
     ##
-    df_gt = pd.merge(df_gt , df_imp , left_on = V.id1 , right_on = V.iid)
+    nd_snp = np.argmax(nd_snp , axis = 1)
 
     ##
-    df_gt = df_gt.drop(columns = V.iid)
+    df_gt = pd.DataFrame(nd_snp , columns = [v.rs22])
+    df_gt.value_counts()
 
     ##
-    df_gt = df_gt.rename(columns = {
-            FP.rs28.stem : 'i' + '_1_' + FP.rs28.stem
-            })
-    df_gt = df_gt.rename(columns = {
-            FP.rs14.stem : 'i' + '_1_' + FP.rs14.stem
-            })
+    df_wgs_1 = pd.concat([df_iid , df_gt] , axis = 1)
 
     ##
-    df_gt = pd.merge(df_gt , df_wgs_gt , left_on = V.id2 , right_on = V.iid)
+    df_wgs_1.to_parquet(fp.wgs_rs22_processed , index = False)
 
-    df_gt = df_gt.drop(columns = V.iid)
-
     ##
-    df_gt = df_gt.rename(columns = {
-            FP.rs28.stem : 'i' + '_2_' + FP.rs28.stem
-            })
-
-    df_gt = df_gt.rename(columns = {
-            FP.rs14.stem : 'i' + '_2_' + FP.rs14.stem
-            })
+    # high quality SNP
+    bgn = open_bgen(fp.wgs_rs57)
+    sample = bgn.samples
 
     ##
-    df_gt1 = df_gt.copy()
+    _dct = {
+            v.iid : sample
+            }
 
-    ##
-    df_gt1['W1p2_rs28'] = df_gt1['w_1_rs2844970'] + df_gt1['w_2_rs2844970']
-    df_gt1['W1p2_rs14'] = df_gt1['w_1_rs144588527'] + df_gt1['w_2_rs144588527']
+    df_iid = pd.DataFrame(_dct)
 
     ##
-    df_gt1['W1m2_rs28'] = df_gt1['w_1_rs2844970'] - df_gt1['w_2_rs2844970']
-    df_gt1['W1m2_rs14'] = df_gt1['w_1_rs144588527'] - df_gt1['w_2_rs144588527']
+    nd_gt = bgn.read()
+    nd_gt.shape
 
-    df_gt1['I1m2_rs28'] = df_gt1['i_1_rs2844970'] - df_gt1['i_2_rs2844970']
-    df_gt1['I1m2_rs14'] = df_gt1['i_1_rs144588527'] - df_gt1['i_2_rs144588527']
-
     ##
+    nd_snp = nd_gt[: , 0 , :]
+    nd_snp
 
     ##
-
+    nd_snp = np.argmax(nd_snp , axis = 1)
 
     ##
-    df_gt1.to_csv(D.out_csf / 'model_data.csv' , index = False)
+    df_gt = pd.DataFrame(nd_snp , columns = [v.rs57])
+    df_gt.value_counts()
 
     ##
-    df_gt2 = df_gt1.copy()
+    df_wgs_2 = pd.concat([df_iid , df_gt] , axis = 1)
 
     ##
-    cols = df_gt2.columns
+    df_wgs_2.to_parquet(fp.wgs_rs57_processed , index = False)
 
     ##
-    cols
 
-    ##
-    c2k = ['w_1_rs2844970' , 'w_2_rs2844970' , 'i_1_rs2844970' ,
-           'i_2_rs2844970']
 
-    df_gt2 = df_gt2[c2k]
+def combine_imputed_and_wgs_data() :
+    pass
 
     ##
-    for col in df_gt2.columns :
-        print(df_gt2[col].value_counts())
-        print(df_gt2[col].mean())
+    d = Directory()
+    fp = FilePath()
+    v = Var()
 
     ##
-    df_gt2.describe()
+    df_imp = pd.read_parquet(fp.processed_imputed_data)
+    df_wgs_1 = pd.read_parquet(fp.wgs_rs22_processed)
+    df_wgs_2 = pd.read_parquet(fp.wgs_rs57_processed)
 
     ##
-
-
-def read_rs28_data_from_vcf() :
-    """ """
+    df = pd.merge(df_imp , df_wgs_1 , on = v.iid , suffixes = ('_imp' , '_wgs'))
 
     ##
+    df = pd.merge(df , df_wgs_2 , on = v.iid , suffixes = ('_imp' , '_wgs'))
 
-    import pysam
-
-
-    # Open the VCF file
-    vcf_file = pysam.VariantFile(FP.fixed_rs14_vcf)
-
-    # Iterate over each record
-    for record in vcf_file.fetch() :
-        # Extract genotype data for each sample
-        for sample in record.samples :
-            genotype = record.samples[sample]['GT']
-            print(f"{sample}: {genotype}")
-
     ##
-    import vcf
-
-
-    # Open the VCF file
-    vcf_reader = vcf.Reader(open(FP.rs14_vcf , 'r'))
+    df.to_parquet(fp.processed_data , index = False)
 
-    # Iterate over records
-    for record in vcf_reader :
-        print(record)  # Each record is a variant with its details
-
-    # Access individual fields like record.CHROM, record.POS, record.REF, record.ALT, etc.
-
-
     ##
-    import pandas as pd
-
-
-    # make tab-delimited file for pos
-    df = pd.DataFrame(data = {
-            "CHROM" : [22] ,
-            "POS"   : [15732362]
-            })
-
-    df.to_csv('/Users/mmir/Downloads/pos.txt' , sep = '\t' , index = False)
 
-    ##
 
+def process_combined_data() :
+    pass
 
     ##
-
-
+    d = Directory()
+    fp = FilePath()
+    v = Var()
 
     ##
+    df = pd.read_csv(fp.rels)
 
-
-
     ##
-
+    df = df[[v.id1 , v.id2]]
 
-
     ##
-
-
+    df = df.astype('string')
 
     ##
+    df = df.drop_duplicates()
 
-
-
     ##
-
+    df_gt = pd.read_parquet(fp.processed_data)
 
-
     ##
 
+    
 
-
     ##
-
 
 
     ##
 
-
     ##
+    fp.rels
 
-
-    ##
 
 
     ##

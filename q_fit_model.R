@@ -1,4 +1,3 @@
-
 list.of.packages <- c("data.table", "dplyr", "magrittr", "tidyverse", "plinkFile", "genio")
 
 lapply(list.of.packages, library, character.only = TRUE)
@@ -23,4 +22,3 @@ summary(model3)
 # high quality snp g1-g2 ~ g1^-g2^
 model4 <- lm(W1m2_rs14 ~ I1m2_rs14, data = data)
 summary(model4)
-
