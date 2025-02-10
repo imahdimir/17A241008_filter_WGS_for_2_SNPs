@@ -28,6 +28,7 @@ dx download "$path/$b1.tbi"
 # psition on GRCH38 assembly from dbSNP database using RSID on the https://genome.ucsc.edu/cgi-bin/hgTables
 
 tabix -h $b1 $lq_pos > $lq.vcf
+
 bcftools query -f '%CHROM\t%POS\n' $lq.vcf
 #> chr22 15708497
 vcf-validator $lq.vcf

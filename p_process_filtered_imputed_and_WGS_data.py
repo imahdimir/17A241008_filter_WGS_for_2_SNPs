@@ -8,6 +8,10 @@ class Var :
     iid = 'IID'
     id1 = 'ID1'
     id2 = 'ID2'
+    inf_type = 'infType'
+
+    imp = '_imp'
+    wgs = '_wgs'
 
     rs22 = 'rs2212127'
     rs57 = 'rs5756437'
@@ -21,6 +25,20 @@ class Var :
     hi2 = 'hi2'
     li1 = 'li1'
     li2 = 'li2'
+
+    # high quality SNP, WGS sum
+    hws = 'hws'
+    # low quality SNP, WGS sum
+    lws = 'lws'
+    # high quality SNP, WGS difference
+    hwd = 'hwd'
+    # low quality SNP, WGS difference
+    lwd = 'lwd'
+
+    # high quality SNP, imputed difference
+    hid = 'hid'
+    # low quality SNP, imputed difference
+    lid = 'lid'
 
 
 class Directory :
@@ -52,8 +70,11 @@ class FilePath :
     wgs_rs57_processed = d.proccessed_data / 'df_wgs_rs57.parquet'
 
     processed_data = d.proccessed_data / 'processed_data_combined.parquet'
+    processed_data_csv = d.proccessed_data / 'processed_data_combined.csv'
 
     rels = d.inp_csf / 'ukb_rel_with_infType_fs.csv'
+
+    model_data = d.proccessed_data / 'model_data.csv'
 
 
 def process_imputed_data_to_fit_the_model() :
@@ -239,6 +260,10 @@ def process_combined_data() :
     df = pd.read_csv(fp.rels)
 
     ##
+    msk = df[v.inf_type].eq('FS')
+    df = df[msk]
+
+    ##
     df = df[[v.id1 , v.id2]]
 
     ##
@@ -251,17 +276,65 @@ def process_combined_data() :
     df_gt = pd.read_parquet(fp.processed_data)
 
     ##
+    # I assume ref allele is inverted in the WGS data
+    # so I will invert the genotypes
+    df_gt[v.rs22 + v.wgs] = 2 - df_gt[v.rs22 + v.wgs]
+    df_gt[v.rs57 + v.wgs] = 2 - df_gt[v.rs57 + v.wgs]
 
-    
+    ##
+    df[v.hw1] = df[v.id1].map(df_gt.set_index(v.iid)[v.rs57 + v.wgs])
+    df[v.hw2] = df[v.id2].map(df_gt.set_index(v.iid)[v.rs57 + v.wgs])
+    df[v.lw1] = df[v.id1].map(df_gt.set_index(v.iid)[v.rs22 + v.wgs])
+    df[v.lw2] = df[v.id2].map(df_gt.set_index(v.iid)[v.rs22 + v.wgs])
+
+    df[v.hi1] = df[v.id1].map(df_gt.set_index(v.iid)[v.rs57 + v.imp])
+    df[v.hi2] = df[v.id2].map(df_gt.set_index(v.iid)[v.rs57 + v.imp])
+    df[v.li1] = df[v.id1].map(df_gt.set_index(v.iid)[v.rs22 + v.imp])
+    df[v.li2] = df[v.id2].map(df_gt.set_index(v.iid)[v.rs22 + v.imp])
+
+    ##
+    msk = df_gt[v.iid].eq('4401653')
+    df_gt[msk]
+
+    ##
+    df[v.hws] = df[v.hw1] + df[v.hw2]
+    df[v.lws] = df[v.lw1] + df[v.lw2]
+    df[v.hwd] = df[v.hw1] - df[v.hw2]
+    df[v.lwd] = df[v.lw1] - df[v.lw2]
+    df[v.hid] = df[v.hi1] - df[v.hi2]
+    df[v.lid] = df[v.li1] - df[v.li2]
+
+    ##
+    df.to_csv(fp.model_data , index = False)
+
+    ##
+    df_gt.describe()
+
+    ##
+
+
+def genotypes() :
+    pass
+
+    ##
+    d = Directory()
+    fp = FilePath()
+    v = Var()
+
+    ##
+    df = pd.read_parquet(fp.processed_data)
+
+    ##
+    df[v.rs22 + v.wgs] = 2 - df[v.rs22 + v.wgs]
+    df[v.rs57 + v.wgs] = 2 - df[v.rs57 + v.wgs]
+
+    ##
+    df.to_csv(fp.processed_data_csv , index = False)
 
     ##
 
 
     ##
-
-    ##
-    fp.rels
-
 
 
     ##
